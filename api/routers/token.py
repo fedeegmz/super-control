@@ -7,14 +7,13 @@ from typing import Annotated, Union
 
 # FastAPI
 from fastapi import APIRouter, HTTPException, status, Depends
-from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 # JWT
 from jose import jwt, JWTError
 
 # util
-from util import verify_password, get_password_hash
+from util import authenticate_user
 
 # db
 from db.mongo_client import db_client
@@ -36,27 +35,6 @@ router = APIRouter(
     responses={404: {"message": "Not Found"}}
 )
 
-
-def authenticate_user(username: str, password: str):
-    try:
-        user = db_client.users.find_one({"username": username})
-    except Exception as err:
-        print(f'DB error: {err}')
-        raise HTTPException(
-            status_code = status.HTTP_400_BAD_REQUEST,
-            detail = {"error": "Username not found"}
-        )
-    
-    if not user:
-        return False
-    
-    user = UserDB(**user)
-    
-    if not verify_password(password, user.password):
-        return False
-    
-    del user.password
-    return user
 
 def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
     to_encode = data.copy()
@@ -135,7 +113,7 @@ async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm,
         }
 
 
-@router.get(
+@router.post(
         path = "/users/me/",
         response_model = User,
         tags = ["Token"]

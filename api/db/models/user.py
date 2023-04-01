@@ -9,7 +9,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 
 class User(BaseModel):
-    _id: Optional[str] = Field(...)
+    _id: ObjectId = Field(...)
     username: str = Field(
         ...,
         min_length = 4,
@@ -25,12 +25,14 @@ class User(BaseModel):
         min_length = 3,
         max_length = 50
         )
-    # email: str = Field(...)
-    # birth_date: Optional[date] = Field(default=None)
-    # created: date = Field(default=datetime.now())
-    disabled: bool = False
+    email: EmailStr = Field(...)
+    birth_date: Union[date, None] = Field(default=None)
+    
+class UserIn(User):
+    disabled: bool = Field(default=False)
+    created: datetime = Field(default=datetime.now())
 
-class UserDB(User):
+class UserDB(UserIn):
     password: str = Field(
         ...,
         min_length = 8,

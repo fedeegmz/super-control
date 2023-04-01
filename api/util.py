@@ -7,8 +7,11 @@ from passlib.context import CryptContext
 # db
 from db.mongo_client import db_client
 
+# models
+from db.models.user import User, UserDB
+
 # serializers
-from db.serializers.user import user_serializer, users_serializer
+from db.serializers.user import users_serializer
 
 pwd_context = CryptContext(
     schemes = ["bcrypt"],
@@ -21,25 +24,22 @@ def verify_password(plain_password: str, hashed_password: str):
 def get_password_hash(password: str):
     return pwd_context.hash(password)
 
-def search_user_db(
-        filter: dict = None,
-        all: bool = False,
-        num: int = 1
-        ):
+def authenticate_user(username: str, password: str):
     try:
-        if filter:
-            if num == 1:
-                user = db_client.users.find_one(filter)
-            else:
-                user = db_client.users.find(filter).to_list(num)
-            
-            return user_serializer(user)
-        elif all:
-            users = db_client.users.find()
-            print(users)
-            return users_serializer(users)
-    except:
+        user = db_client.users.find_one({"username": username})
+    except Exception as err:
+        print(f'DB error: {err}')
         raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = {"error": "User/s not found"}
+            status_code = status.HTTP_400_BAD_REQUEST,
+            detail = {"error": "Username not found"}
         )
+    
+    if not user:
+        return False
+    
+    user = UserDB(**user)
+    
+    if not verify_password(password, user.password):
+        return False
+    
+    return User(**user)

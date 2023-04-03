@@ -32,7 +32,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 router = APIRouter(
     prefix="/login",
-    responses={404: {"message": "Not Found"}}
+    responses={status.HTTP_404_NOT_FOUND: {"error": "Not Found"}}
 )
 
 

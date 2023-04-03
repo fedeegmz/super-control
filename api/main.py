@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 
 # Routers
-from routers import users, token
+from routers import users, token, image
 
 
 app = FastAPI()
@@ -10,6 +10,7 @@ app = FastAPI()
 # Routers
 app.include_router(token.router)
 app.include_router(users.router)
+app.include_router(image.router)
 
 
 ### PATH OPERATIONS ###

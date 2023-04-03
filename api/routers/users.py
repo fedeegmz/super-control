@@ -2,7 +2,7 @@
 from bson.objectid import ObjectId
 
 # Typing
-from typing import Annotated
+from typing import Annotated, List
 
 # FastAPI
 from fastapi import APIRouter, Path, Query, Body
@@ -16,7 +16,7 @@ from util import get_password_hash, authenticate_user
 from db.mongo_client import db_client
 
 # models
-from db.models.user import User, UserDB
+from db.models.user import User, UserDB, UserIn
 
 # serializers
 from db.serializers.user import users_serializer
@@ -24,7 +24,7 @@ from db.serializers.user import users_serializer
 
 router = APIRouter(
     prefix = "/users",
-    responses = {status.HTTP_404_NOT_FOUND: {"message": "Not Found"}}
+    responses = {status.HTTP_404_NOT_FOUND: {"error": "Not Found"}}
 )
 
 
@@ -34,6 +34,7 @@ router = APIRouter(
 @router.post(
     path = "/signup",
     status_code = status.HTTP_201_CREATED,
+    response_model = User,
     summary = "Register a user",
     tags = ["Users"]
 )
@@ -60,15 +61,13 @@ async def signup(
     new_user = db_client.users.find_one({"_id": ObjectId(user_id)})
     new_user = User(**new_user)
     
-    return {
-        "message": "User inserted",
-        "user": new_user
-        }
+    return new_user
 
 ## show users ##
 @router.get(
         path = "/",
         status_code = status.HTTP_200_OK,
+        response_model = List[User],
         summary = "Show all users",
         tags = ["Users"])
 async def users(
@@ -88,6 +87,7 @@ async def users(
 @router.get(
         path = "/{username}",
         status_code = status.HTTP_200_OK,
+        response_model = User,
         summary = "Show a user",
         tags = ["Users"])
 async def user(username: str = Path(...)):
@@ -101,14 +101,13 @@ async def user(username: str = Path(...)):
             detail = "User not found"
             )
     
-    return {
-        "user": user_db
-    }
+    return user_db
 
 ## delete a user ##
 @router.delete(
     path = "/",
     status_code = status.HTTP_200_OK,
+    response_model = User,
     summary = "Delete a user",
     tags = ["Users"]
     )
@@ -123,16 +122,17 @@ async def delete_user(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
         )
     
     try:
-        db_user = db_client.users.find_one({"username": form_data.username})
+        user = db_client.users.find_one({"username": form_data.username})
+        user = UserIn(**user)
 
-        if db_user.disabled:
+        if user.disabled:
             raise HTTPException(
                 status_code = status.HTTP_409_CONFLICT,
                 detail = {
                     "error": "User has already been deleted"
                 }
             )
-        db_user.disabled = True
+        user.disabled = True
     except:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
@@ -141,7 +141,5 @@ async def delete_user(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
             }
         )
     
-    return {
-        "message": "User deleted",
-        "user": user
-    }
+    db_user = User(**user)
+    return db_user

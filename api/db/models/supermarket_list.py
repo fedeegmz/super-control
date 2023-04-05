@@ -23,5 +23,5 @@ class SuperList(BaseModel):
         min_length = 4,
         max_length = 15
     )
-    order: Optional[int] = Field(default=None)
+    order: Optional[str] = Field(default=None)
     products: list[_Products] = Field()

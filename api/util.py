@@ -42,4 +42,8 @@ def authenticate_user(username: str, password: str):
     if not verify_password(password, user.password):
         return False
     
-    return User(**user)
+    del user.password
+    del user.disabled
+    del user.created
+
+    return user

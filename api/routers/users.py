@@ -67,21 +67,20 @@ async def signup(
 @router.get(
         path = "/",
         status_code = status.HTTP_200_OK,
-        response_model = List[User],
+        response_model = list[User],
         summary = "Show all users",
         tags = ["Users"])
 async def users(
-    limit: int = Query(default=None)
+    limit: int | None = Query(default=None)
 ):
     if limit:
-        users_db = db_client.users.find({"disabled": False})
-    else:
         users_db = db_client.users.find({"disabled": False}).to_list(limit)
+    else:
+        users_db = db_client.users.find({"disabled": False})
+        
     users_list = users_serializer(users_db)
-
-    return {
-        "users": users_list
-    }
+    
+    return users_list
 
 ## show a user ##
 @router.get(

@@ -19,14 +19,14 @@ from util import authenticate_user
 from db.mongo_client import db_client
 
 # models
-from db.models.user import User, UserDB
+from db.models.user import User, UserIn
 from db.models.token import Token, TokenData
 
 
 
 SECRET_KEY = os.environ.get("SUPERCONTROL_SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 15
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -49,13 +49,13 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+async def get_current_user(token = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code = status.HTTP_400_BAD_REQUEST,
         detail = "Could not validate credentials",
         headers = {"WWW-Authenticate": "Bearer"},
     )
-
+    print("EN get_current_user")
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
@@ -72,8 +72,8 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     except:
         raise credentials_exception
     
-    user = User(**user)
-
+    user = UserIn(**user)
+    
     if user.disabled:
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
@@ -91,17 +91,16 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         summary = "Login a user",
         tags = ["Token"]
         )
-async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(form_data.username, form_data.password)
     
     if not user:
         raise HTTPException(
-            status_code = status.HTTP_401_UNAUTHORIZED,
+            status_code = status.HTTP_409_CONFLICT,
             detail = "Incorrect username or password",
             headers = {"WWW-Authenticate": "Bearer"}
         )
     
-    # access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data = {"sub": user.username},
         expires_delta = ACCESS_TOKEN_EXPIRE_MINUTES
@@ -113,10 +112,10 @@ async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm,
         }
 
 
-@router.post(
-        path = "/users/me/",
+@router.get(
+        path = "/users/me",
         response_model = User,
         tags = ["Token"]
         )
-async def read_users_me(current_user: Annotated[User, Depends(get_current_user)]):
+async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user

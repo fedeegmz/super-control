@@ -24,7 +24,7 @@ router = APIRouter(
 @router.get(
     path = "/{username}",
     status_code = status.HTTP_200_OK,
-    # response_model = list[SuperList],
+    response_model = list[SuperList] | SuperList | dict,
     summary = "Show all supermarket lists for a user",
     tags = ["Supermarket list"]
 )
@@ -42,6 +42,29 @@ async def supermarket_lists(
         )
     
     return super_lists
+
+### Show a supermarket list ###
+@router.get(
+    path = "/{order}",
+    status_code = status.HTTP_200_OK,
+    response_model = SuperList,
+    summary = "Show a supermarket list with the order ID",
+    tags = ["Supermarket list"]
+)
+async def supermarket_lists(
+    order: str = Path(...)
+):
+    try:
+        super_list = db_client.super_lists.find_one({"order": order})
+    except:
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND,
+            detail = {
+                "error": "Order not found"
+            }
+        )
+    
+    return super_list
 
 ### Register a supermarket list ###
 @router.post(

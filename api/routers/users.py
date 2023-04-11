@@ -71,7 +71,7 @@ async def signup(
         summary = "Show all users",
         tags = ["Users"])
 async def users(
-    limit: int | None = Query(default=None)
+    limit: int = Query(default=None)
 ):
     if limit:
         users_db = db_client.users.find({"disabled": False}).to_list(limit)

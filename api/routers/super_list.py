@@ -24,7 +24,7 @@ router = APIRouter(
 @router.get(
     path = "/{username}",
     status_code = status.HTTP_200_OK,
-    response_model = list[SuperList] | SuperList | dict,
+    # response_model = list[SuperList] | SuperList | dict,
     summary = "Show all supermarket lists for a user",
     tags = ["Supermarket list"]
 )

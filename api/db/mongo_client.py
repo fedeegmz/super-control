@@ -3,8 +3,8 @@ import os
 from pymongo import MongoClient
 
 
-username = os.getenv("supcon-mongouser")
-password = os.getenv("supcon-mongopassw")
+username = os.getenv("SUPCON-MONGOUSER")
+password = os.getenv("SUPCON-MONGOPASSW")
 
 atlas_url = f'mongodb+srv://{username}:{password}@main.utvbo6g.mongodb.net/?retryWrites=true&w=majority'
 

@@ -24,7 +24,7 @@ from db.models.token import Token, TokenData
 
 
 
-SECRET_KEY = os.environ.get("SUPERCONTROL_SECRET_KEY")
+SECRET_KEY = os.getenv("supercontrol-secret")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 

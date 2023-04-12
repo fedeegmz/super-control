@@ -1,9 +1,11 @@
 # Python
-import os
 from datetime import datetime, timedelta
 
 # Typing
 from typing import Annotated, Union
+
+# Deta
+from deta import Deta
 
 # FastAPI
 from fastapi import APIRouter, HTTPException, status, Depends
@@ -24,7 +26,7 @@ from db.models.token import Token, TokenData
 
 
 
-SECRET_KEY = os.getenv("SUPCON_SECRETKEY")
+SECRET_KEY = Deta("SUPCON_SECRETKEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 

@@ -1,10 +1,12 @@
-import os
+# Deta
+from deta import Deta
+
 # pymongo
 from pymongo import MongoClient
 
 
-username = os.getenv("SUPCON_MONGOUSER")
-password = os.getenv("SUPCON_MONGOPASSW")
+username = Deta("SUPCON_MONGOUSER")
+password = Deta("SUPCON_MONGOPASSW")
 # username = "test"
 # password = "VfJWmZnNZsqbzFEw"
 

@@ -24,7 +24,7 @@ from db.models.token import Token, TokenData
 
 
 
-SECRET_KEY = os.getenv("SUPCON-SECRETKEY")
+SECRET_KEY = os.getenv("SUPCON_SECRETKEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 

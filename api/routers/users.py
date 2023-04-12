@@ -46,15 +46,17 @@ async def signup(
         user_data["password"] = get_password_hash(user_data["password"])
         user_in = UserDB(**user_data).dict()
         user_in["birth_date"] = str(user_data["birth_date"])
+        message = "User not inserted"
 
-        user_id = db_client.users.insert_one(user_in).inserted_id
+        user_id = db_client.users.insert_one(dict(user_in)).inserted_id
+        message = "Inserted user"
 
     except Exception as err:
-        print(f'Error: {err}')
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail = {
-                "error": "User not inserted"
+                "errmsg": message,
+                "errdetail": str(err)
                 }
         )
     

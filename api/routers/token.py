@@ -17,7 +17,7 @@ from jose import jwt, JWTError
 from util import authenticate_user
 
 # db
-from db.mongo_client import db_client
+from db.deta_db import db_main
 
 # models
 from db.models.user import User, UserIn
@@ -68,7 +68,7 @@ async def get_current_user(token = Depends(oauth2_scheme)):
         raise credentials_exception
     
     try:
-        user = db_client.users.find_one({"username": token_data.username})
+        user = db_main.get({"username": token_data.username})
     except:
         raise credentials_exception
     

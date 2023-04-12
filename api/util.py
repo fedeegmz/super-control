@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from passlib.context import CryptContext
 
 # db
-from db.mongo_client import db_client
+from db.deta_db import db_main
 
 # models
 from db.models.user import User, UserDB
@@ -26,7 +26,7 @@ def get_password_hash(password: str):
 
 def authenticate_user(username: str, password: str):
     try:
-        user = db_client.users.find_one({"username": username})
+        user = db_main.get({"username": username})
     except Exception as err:
         print(f'DB error: {err}')
         raise HTTPException(

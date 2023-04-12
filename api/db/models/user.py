@@ -9,7 +9,6 @@ from pydantic import BaseModel, EmailStr, Field
 
 
 class User(BaseModel):
-    _id: ObjectId = Field(...)
     username: str = Field(
         ...,
         min_length = 4,

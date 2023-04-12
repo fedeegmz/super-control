@@ -13,7 +13,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from util import get_password_hash, authenticate_user
 
 # db
-from db.mongo_client import db_client
+from db.deta_db import db_main
 
 # models
 from db.models.user import User, UserDB, UserIn
@@ -46,9 +46,13 @@ async def signup(
         user_data["password"] = get_password_hash(user_data["password"])
         user_in = UserDB(**user_data).dict()
         user_in["birth_date"] = str(user_data["birth_date"])
+        
         message = "User not inserted"
 
-        user_id = db_client.users.insert_one(dict(user_in)).inserted_id
+        new_user = db_main.put(
+            data = user_in,
+            key = user_in.username
+        )
         message = "Inserted user"
 
     except Exception as err:
@@ -59,9 +63,6 @@ async def signup(
                 "errdetail": str(err)
                 }
         )
-    
-    new_user = db_client.users.find_one({"_id": ObjectId(user_id)})
-    new_user = User(**new_user)
     
     return new_user
 
@@ -75,11 +76,15 @@ async def signup(
 async def users(
     limit: int = Query(default=None)
 ):
-    if limit:
-        users_db = db_client.users.find({"disabled": False}).to_list(limit)
-    else:
-        users_db = db_client.users.find({"disabled": False})
-        
+    try:
+        users_db = db_main.fetch({"disabled": False})
+    except:
+        raise HTTPException(
+            status_code = status.HTTP_409_CONFLICT,
+            detail = {
+                "errmsg": "DB error"
+            }
+        )
     users_list = users_serializer(users_db)
     
     return users_list
@@ -93,7 +98,7 @@ async def users(
         tags = ["Users"])
 async def user(username: str = Path(...)):
     try:
-        user_db = db_client.users.find_one({"username": username})
+        user_db = db_main.get({"username": username})
         user_db = User(**user_db)
     except Exception as err:
         print(f'Find error: {err}')
@@ -123,7 +128,7 @@ async def delete_user(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
         )
     
     try:
-        user = db_client.users.find_one({"username": form_data.username})
+        user = db_main.get({"username": form_data.username})
         user = UserIn(**user)
 
         if user.disabled:
@@ -133,7 +138,12 @@ async def delete_user(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
                     "error": "User has already been deleted"
                 }
             )
+        
         user.disabled = True
+        deleted_user = db_main.put(
+            data = user,
+            key = user.username
+        )
     except:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
@@ -142,5 +152,4 @@ async def delete_user(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
             }
         )
     
-    db_user = User(**user)
-    return db_user
+    return User(**deleted_user)

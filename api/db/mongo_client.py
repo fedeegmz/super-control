@@ -1,11 +1,12 @@
+# Python
 import os
 
 # pymongo
 from pymongo import MongoClient
 
 
-username = os.getenv("SUPCON_MONGOUSER")
-password = os.getenv("SUPCON_MONGOPASSW")
+username = os.getenv("DB_MONGO_USER")
+password = os.getenv("DB_MONGO_PASSW")
 # username = "test"
 # password = "VfJWmZnNZsqbzFEw"
 

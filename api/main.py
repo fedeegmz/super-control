@@ -1,9 +1,13 @@
+# Python
+from dotenv import load_dotenv
+
 # FastAPI
 from fastapi import FastAPI
 
 # Routers
 from routers import users, token, super_list
 
+load_dotenv()
 
 app = FastAPI()
 

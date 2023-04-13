@@ -1,8 +1,6 @@
 # Python
 from datetime import date, datetime
-from typing import Optional, Union
-from bson import ObjectId
-# from uuid import UUID
+from typing import Optional
 
 # Pydantic
 from pydantic import BaseModel, EmailStr, Field
@@ -25,7 +23,7 @@ class User(BaseModel):
         max_length = 50
         )
     email: EmailStr = Field(...)
-    birth_date: Union[date, None] = Field(default=None)
+    birth_date: Optional[date] = Field(default=None)
 
 class UserDB(User):
     password: str = Field(
@@ -41,7 +39,7 @@ class UserDB(User):
                 "name": "John",
                 "lastname": "Doe",
                 "email": "johndoe@test.com",
-                "birth_date": None,
+                "birth_date": str(date(2000, 12, 25)),
                 "password": "testpassword"
             }
         }

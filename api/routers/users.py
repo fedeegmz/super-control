@@ -1,4 +1,5 @@
 # Python
+from datetime import datetime, date
 
 # Typing
 from typing import Annotated, List
@@ -6,6 +7,7 @@ from typing import Annotated, List
 # FastAPI
 from fastapi import APIRouter, Path, Query, Body
 from fastapi import HTTPException, status, Depends
+from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordRequestForm
 
 # util
@@ -40,26 +42,27 @@ router = APIRouter(
 async def signup(
     user_data: UserDB = Body(...)
 ):
-    try:
-        user_data = user_data.dict()
-        user_data["password"] = get_password_hash(user_data["password"])
+    user_data = user_data.dict()
+    user_data["password"] = get_password_hash(user_data["password"])
+    if user_data["birth_date"]:
         user_data["birth_date"] = str(user_data["birth_date"])
-
-        user_in = db_users.get(user_data.get("username"))
-        if user_in:
-            raise HTTPException(
-                status_code = status.HTTP_409_CONFLICT,
-                detail = {
-                    "errmsg": "Username exists",
-                    "user_detail": User(**user_in)
-                }
-            )
-
+    
+    user_in = db_users.get(user_data.get("username"))
+    if user_in:
+        user_in = jsonable_encoder(User(**user_in))
+        raise HTTPException(
+            status_code = status.HTTP_409_CONFLICT,
+            detail = {
+                "errmsg": "Username exists",
+                "user_detail": user_in
+            }
+        )
+    
+    try:
         new_user = db_users.put(
-            data = user_data,
+            data = jsonable_encoder(UserIn(**user_data)),
             key = user_data.get("username")
         )
-
     except Exception as err:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -105,7 +108,7 @@ async def user(username: str = Path(...)):
         user_db = User(**user_db)
     except Exception as err:
         raise HTTPException(
-            status_code = status.HTTP_400_BAD_REQUEST,
+            status_code = status.HTTP_404_NOT_FOUND,
             detail = {
                 "errmsg": "User not found",
                 "errdetail": str(err)
@@ -128,38 +131,29 @@ async def update_user(
 ):
     try:
         user = db_users.get(username)
-
-        if not user:
-            raise HTTPException(
-                status_code = status.HTTP_400_BAD_REQUEST,
-                detail = {
-                    "errmsg": "User not found"
-                }
-            )
-        
         user = UserIn(**user)
+    except:
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND,
+            detail = {
+                "errmsg": "User not found"
+            }
+        )
 
-        if user.disabled:
-            raise HTTPException(
-                status_code = status.HTTP_409_CONFLICT,
-                detail = {
-                    "errmsg": "User has already been deleted"
-                }
-            )
-        
+    if user.disabled:
+        raise HTTPException(
+            status_code = status.HTTP_409_CONFLICT,
+            detail = {
+                "errmsg": "User has already been deleted"
+            }
+        )
+    
+    try:
         updated_user = db_users.update(
             updates = user_updates,
             key = username
         )
     except:
-        raise HTTPException(
-            status_code = status.HTTP_409_CONFLICT,
-            detail = {
-                "error": "User not updated"
-            }
-        )
-    
-    if not updated_user:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
             detail = {
@@ -183,18 +177,25 @@ async def delete_user(
     try:
         user = db_users.get(username)
         user = UserIn(**user)
+    except:
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND,
+            detail = {
+                "errmsg": "User not found"
+            }
+        )
 
-        if user.disabled:
-            raise HTTPException(
-                status_code = status.HTTP_409_CONFLICT,
-                detail = {
-                    "errmsg": "User has already been deleted"
-                }
-            )
-        
-        user.disabled = True
-        deleted_user = db_users.put(
-            data = user,
+    if user.disabled:
+        raise HTTPException(
+            status_code = status.HTTP_409_CONFLICT,
+            detail = {
+                "errmsg": "User has already been deleted"
+            }
+        )
+    
+    try:
+        deleted_user = db_users.update(
+            updates = {"disabled": True},
             key = user.username
         )
     except:

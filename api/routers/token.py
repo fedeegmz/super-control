@@ -13,6 +13,9 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 # JWT
 from jose import jwt, JWTError
 
+# settings
+# from config import settings
+
 # util
 from util import authenticate_user
 
@@ -24,7 +27,7 @@ from db.models.user import User, UserIn
 from db.models.token import Token, TokenData
 
 
-SECRET_KEY = os.getenv("JWT_SECRETKEY")
+JWT_SECRETKEY = os.getenv("JWT_SECRETKEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 
@@ -46,7 +49,7 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     
     to_encode.update({"exp": expire})
 
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(to_encode, JWT_SECRETKEY, algorithm=ALGORITHM)
 
 
 async def get_current_user(token = Depends(oauth2_scheme)):
@@ -59,7 +62,7 @@ async def get_current_user(token = Depends(oauth2_scheme)):
     )
     
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, JWT_SECRETKEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         
         if username is None:

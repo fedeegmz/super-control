@@ -127,19 +127,23 @@ async def user(username: str = Path(...)):
 )
 async def update_user(
     username: str = Path(...),
-    user_updates: dict = Body(...)
+    user_updates: dict = Body(
+        ...,
+        example = {"name": "Wade"}
+    )
 ):
-    try:
-        user = db_users.get(username)
-        user = UserIn(**user)
-    except:
+    user = db_users.get(username)
+    
+    if not user:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
             detail = {
                 "errmsg": "User not found"
             }
         )
-
+    
+    user = UserIn(**user)
+    
     if user.disabled:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
@@ -149,7 +153,7 @@ async def update_user(
         )
     
     try:
-        updated_user = db_users.update(
+        db_users.update(
             updates = user_updates,
             key = username
         )
@@ -161,7 +165,7 @@ async def update_user(
             }
         )
     
-    return User(**updated_user)
+    return User(**db_users.get(username))
 
 ## delete a user ##
 @router.delete(
@@ -174,16 +178,17 @@ async def update_user(
 async def delete_user(
     username: str = Path(...)
 ):
-    try:
-        user = db_users.get(username)
-        user = UserIn(**user)
-    except:
+    user = db_users.get(username)
+    
+    if not user:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
             detail = {
                 "errmsg": "User not found"
             }
         )
+
+    user = UserIn(**user)
 
     if user.disabled:
         raise HTTPException(
@@ -194,7 +199,7 @@ async def delete_user(
         )
     
     try:
-        deleted_user = db_users.update(
+        db_users.update(
             updates = {"disabled": True},
             key = user.username
         )
@@ -206,4 +211,4 @@ async def delete_user(
             }
         )
     
-    return User(**deleted_user)
+    return User(**db_users.get(username))

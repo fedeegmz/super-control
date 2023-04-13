@@ -17,7 +17,7 @@ from jose import jwt, JWTError
 from util import authenticate_user
 
 # db
-from db.deta_db import db_main
+from db.deta_db import db_users
 
 # models
 from db.models.user import User, UserIn
@@ -52,10 +52,12 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
 async def get_current_user(token = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code = status.HTTP_400_BAD_REQUEST,
-        detail = "Could not validate credentials",
         headers = {"WWW-Authenticate": "Bearer"},
+        detail = {
+            "errmsg": "Could not validate credentials"
+        }
     )
-    print("EN get_current_user")
+    
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
@@ -68,7 +70,9 @@ async def get_current_user(token = Depends(oauth2_scheme)):
         raise credentials_exception
     
     try:
-        user = db_main.get({"username": token_data.username})
+        user = db_users.get(token_data.username)
+        if not user:
+            raise credentials_exception
     except:
         raise credentials_exception
     
@@ -77,7 +81,9 @@ async def get_current_user(token = Depends(oauth2_scheme)):
     if user.disabled:
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
-            detail = "Inactive user"
+            detail = {
+                "errmsg": "Inactive user"
+            }
             )
     
     return user
@@ -96,9 +102,11 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     
     if not user:
         raise HTTPException(
-            status_code = status.HTTP_409_CONFLICT,
-            detail = "Incorrect username or password",
-            headers = {"WWW-Authenticate": "Bearer"}
+            status_code = status.HTTP_400_BAD_REQUEST,
+            headers = {"WWW-Authenticate": "Bearer"},
+            detail = {
+                "errmsg": "Incorrect username or password"
+            }
         )
     
     access_token = create_access_token(

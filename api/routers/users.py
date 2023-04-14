@@ -10,8 +10,8 @@ from fastapi import HTTPException, status, Depends
 from fastapi.encoders import jsonable_encoder
 from fastapi.security import OAuth2PasswordRequestForm
 
-# util
-from util import get_password_hash, authenticate_user
+# auth
+from auth import get_password_hash, get_current_user
 
 # db
 from db.deta_db import db_users
@@ -133,13 +133,13 @@ async def user(username: str = Path(...)):
         tags = ["Users"]
 )
 async def update_user(
-    username: str = Path(...),
+    current_user: User = Depends(get_current_user),
     user_updates: dict = Body(
         ...,
         example = {"name": "Wade"}
     )
 ):
-    user = db_users.get(username)
+    user = db_users.get(current_user.username)
     
     if not user:
         raise HTTPException(
@@ -162,7 +162,7 @@ async def update_user(
     try:
         db_users.update(
             updates = user_updates,
-            key = username
+            key = current_user.username
         )
     except:
         raise HTTPException(
@@ -172,7 +172,7 @@ async def update_user(
             }
         )
     
-    return User(**db_users.get(username))
+    return User(**db_users.get(current_user.username))
 
 ## delete a user ##
 @router.delete(
@@ -183,9 +183,9 @@ async def update_user(
     tags = ["Users"]
     )
 async def delete_user(
-    username: str = Path(...)
+    current_user: User = Depends(get_current_user),
 ):
-    user = db_users.get(username)
+    user = db_users.get(current_user.username)
     
     if not user:
         raise HTTPException(
@@ -218,4 +218,4 @@ async def delete_user(
             }
         )
     
-    return User(**db_users.get(username))
+    return User(**db_users.get(current_user.username))

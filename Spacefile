@@ -9,8 +9,3 @@ micros:
     primary: true
     presets:
       api_keys: true
-    
-  - name: docs
-    src: ./docs
-    engine: static
-    path: docs

@@ -1,9 +1,16 @@
 # Spacefile Docs: https://go.deta.dev/docs/spacefile/v0
 v: 0
+app_name: "SuperControl"
 micros:
   - name: api
-    src: ./
+    src: ./api
     engine: python3.9
+    path: api
     primary: true
     presets:
       api_keys: true
+    
+  - name: docs
+    src: ./docs
+    engine: static
+    path: docs

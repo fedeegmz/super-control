@@ -1,0 +1,43 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+html {
+    background-color: darkcyan;
+}
+body {
+    width: 100vw;
+    margin: 0 auto;
+}
+.menu {
+    display: none;
+    /* display: inline-block;
+    padding: 10px;
+    border-top-right-radius: 10px;
+    height: calc(100vh - 38px);
+    background-color: cornsilk; */
+}
+/* .menu__item {
+    list-style: none;
+} */
+
+.main {
+    position: absolute;
+    display: inline-block;
+}
+.main div {
+    background-color: cornsilk;
+    border: 1px solid black;
+    border-radius: 10px;
+    margin: 5px;
+    padding: 15px 20px;
+}
+.main div ul ul {
+    display: inline-block;
+    border-radius: 10px;
+    list-style: none;
+    margin-left: 20px;
+    padding: 10px;
+    background-color: aliceblue;
+}

@@ -108,10 +108,17 @@ async def user(username: str = Path(...)):
         user_db = User(**user_db)
     except Exception as err:
         raise HTTPException(
+            status_code = status.HTTP_409_CONFLICT,
+            detail = {
+                "errmsg": str(err)
+            }
+        )
+    
+    if not user_db:
+        raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
             detail = {
-                "errmsg": "User not found",
-                "errdetail": str(err)
+                "errmsg": "User not found"
             }
             )
     

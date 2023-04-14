@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./style.css">
+    <title>SuperControl</title>
+</head>
+<body>
+    <h1>API Docs</h1>
+    <div class="menu">
+        <ul>
+            <li class="menu__item">
+                <a href="#">
+                    Registrar un usuario
+                </a>
+            </li>
+            <li class="menu__item">
+                <a href="#">
+                    Obtener todos los usuarios
+                </a>
+            </li>
+            <li class="menu__item">
+                <a href="#">
+                    Obtener un usuario
+                </a>
+            </li>
+            <li class="menu__item">
+                <a href="#">
+                    Actualizar un usuario
+                </a>
+            </li>
+            <li class="menu__item">
+                <a href="#">
+                    Eliminar un usuario
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <section class="main">
+        <div>
+            <h2>Registrar un usuario</h2>
+            <p>
+                <ul>
+                    <li>Method: POST</li>
+                    <li>Endpoint: /users/signup</li>
+                    <li>Body parameters (JSON):</li>
+                        <ul>
+                            <li><strong>username:</strong> entre 4 y 15 caracteres</li>
+                            <li><strong>name:</strong> entre 3 y 20 caracteres</li>
+                            <li><strong>lastname:</strong> entre 3 y 20 caracteres</li>
+                            <li><strong>email</strong></li>
+                            <li><strong>birth_date:</strong> (opcional) en formato AAAA/MM/DD</li>
+                            <li><strong>password:</strong> entre 8 y 64 caracteres</li>
+                        </ul>
+                    <li>Return: usuario creado</li>
+                </ul>
+                En el caso de que el username ya este registrado se retorna un error 409. <br>
+                Si hubo un problema al registrarse el usuario tambien se retorna un error 409.
+            </p>
+        </div>
+        <div>
+            <h2>Obtener todos los usuarios</h2>
+            <p>
+                <ul>
+                    <li>Method: GET</li>
+                    <li>Endpoint: users/</li>
+                    <li>Return: lista de usuarios</li>
+                </ul>
+                En el caso de que ocurra un inconveniente con la base de datos se retorna un error 409.
+            </p>
+        </div>
+        <div>
+            <h2>Obtener un usuario</h2>
+            <p>
+                <ul>
+                    <li>Method: GET</li>
+                    <li>Endpoint: /users/{username}</li>
+                    <li>Path parameter: username</li>
+                    <li>Return: usuario</li>
+                </ul>
+                Si el username no esta registrado se retorna un error 404. <br>
+                Y si hubo un problema con la base de datos se retorna un error 409.
+            </p>
+        </div>
+        <div>
+            <h2>Actualizar un usuario</h2>
+            <p>
+                <ul>
+                    <li>Method: PATCH</li>
+                    <li>Endpoint: /users/{username}</li>
+                    <li>Path parameter: username</li>
+                    <li>Body parameters: campos a actualizar (Ej. {"name": "Wade"})</li>
+                    <li>Return: usuario actualizado</li>
+                </ul>
+                Si el username no esta registrado se retorna un error 404. <br>
+                Y si hubo un problema con la base de datos, 
+                o el usuario fue eliminado, se retorna un error 409.
+            </p>
+        </div>
+        <div>
+            <h2>Eliminar un usuario</h2>
+            <ul>
+                <li>Method: DELETE</li>
+                <li>Endpoint: /users/{username}</li>
+                <li>Path parameter: username</li>
+                <li>Return: usuario eliminado</li>
+            </ul>
+                Si el username no esta registrado se retorna un error 404. <br>
+                Y si hubo un problema con la base de datos, 
+                o el usuario ya fue eliminado, se retorna un error 409.
+        </div>
+    </section>
+</body>
+</html>

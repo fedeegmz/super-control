@@ -15,12 +15,12 @@ class User(BaseModel):
     name: str = Field(
         ...,
         min_length = 3,
-        max_length = 50
+        max_length = 20
         )
     lastname: str = Field(
         ...,
         min_length = 3,
-        max_length = 50
+        max_length = 20
         )
     email: EmailStr = Field(...)
     birth_date: Optional[date] = Field(default=None)

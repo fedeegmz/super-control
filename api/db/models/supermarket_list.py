@@ -1,3 +1,5 @@
+from datetime import date
+
 # typing
 from typing import Optional
 
@@ -5,23 +7,17 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
-class _Products(BaseModel):
-    name: str = Field(
-        ...
-    )
-    description: Optional[str] = Field(
-        default = None
-    )
-    price: float = Field(
-        ...
-    )
-    category: Optional[str] = Field()
+class Products(BaseModel):
+    description: Optional[str] = Field(...)
+    units: float = Field(...)
+    price: float = Field(...)
 
 class SuperList(BaseModel):
+    order: Optional[str] = Field(...)
+    date: Optional[date] = Field(default=None)
     username: str = Field(
         ...,
         min_length = 4,
         max_length = 15
     )
-    order: Optional[str] = Field(default=None)
-    products: list[_Products] = Field()
+    products: list[Products] = Field()

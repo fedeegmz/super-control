@@ -7,5 +7,11 @@ micros:
     engine: python3.9
     path: api
     primary: true
+    public_routes:
+      - "/*"
     presets:
       api_keys: true
+      env:
+        - name: JWT_SECRETKEY
+          description: "Secret key to encode and decode de JWT"
+          default: "a3XFvjxRYYUrmxegVAowuLykzh4SQ54K"

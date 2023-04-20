@@ -1,7 +1,3 @@
-# Typing
-# from typing import 
-from pydantic import HttpUrl
-
 # FastAPI
 from fastapi import APIRouter, Path, Body, Query, File, UploadFile, Depends
 from fastapi import HTTPException, status
@@ -22,7 +18,7 @@ from db.deta_db import drive_super_lists
 
 # models
 from db.models.user import User
-from db.models.supermarket_list import SuperList, Products
+from db.models.supermarket_list import BaseSuperList, SuperList, Products
 
 
 router = APIRouter(
@@ -33,7 +29,7 @@ router = APIRouter(
 
 ### Show supermarket lists ###
 @router.get(
-    path = "/{username}",
+    path = "/",
     status_code = status.HTTP_200_OK,
     # response_model = list[SuperList] | SuperList | dict,
     summary = "Show all supermarket lists for a user",
@@ -56,7 +52,7 @@ async def supermarket_lists(
 
 ### Show a supermarket list ###
 @router.get(
-    path = "/{order}",
+    path = "/{order_id}",
     status_code = status.HTTP_200_OK,
     response_model = SuperList,
     summary = "Show a supermarket list with the order ID",
@@ -64,12 +60,12 @@ async def supermarket_lists(
 )
 async def supermarket_list(
     current_user: User = Depends(get_current_user),
-    order: str = Path(...)
+    order_id: str = Path(...)
 ):
     try:
         super_list = db_super.fetch(
             {"username": current_user.username},
-            {"order": order}
+            {"order": order_id}
         )
     except:
         raise HTTPException(
@@ -99,31 +95,42 @@ async def supermarket_list(
 )
 async def register_supermarket_list(
     current_user: User = Depends(get_current_user),
-    order_id: str = Query(),
-    products: Products = Body(...)
+    order: str = Query(...),
+    issue_date: str = Query(),
+    products: list[Products] = Body(...)
 ):
     try:
         insert = SuperList(
             username = current_user.username,
-            order = order_id,
-            products = products.dict()
+            order = order,
+            issue_date = issue_date,
+            products = jsonable_encoder(products)
         )
         db_super.put(
             data = jsonable_encoder(insert),
-            key = order_id
+            key = order
         )
     except Exception as err:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
             detail = {
-                "errmsg": "List not inserted",
+                "errmsg": "DB error",
                 "errdetail": str(err)
             }
         )
     
-    return SuperList(**db_super.get(order_id))
+    inserted_data = db_super.get(order)
+    if not inserted_data:
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND,
+            detail = {
+                "errmsg": "List not inserted"
+            }
+        )
+    
+    return inserted_data
 
-### Register a CSV ###
+### Register a supermarket list with a url ###
 @router.post(
     path = "/url",
     status_code = status.HTTP_201_CREATED,
@@ -133,17 +140,23 @@ async def register_supermarket_list(
 )
 async def register_supermarket_list_with_url(
     current_user: User = Depends(get_current_user),
-    details: dict = Body(
-        ...,
-        example = {
-            "url": "https:miurl.com",
-            "order": "423423",
-            "date": "2023-12-30"
-            }
-    )
+    details: BaseSuperList = Body(...)
 ):
+    details_dict = details.dict()
+    url = details_dict.get("url")
+    order_id = details_dict.get("order")
+    issue_date = details_dict.get("issue_date")
+
+    if not url or not order_id or not issue_date:
+        raise HTTPException(
+            status_code = status.HTTP_400_BAD_REQUEST,
+            detail = {
+                "errmsg": "url/order/issue_date not recived"
+            }
+        )
+    
     try:
-        page = requests.get(details.url)
+        page = requests.get(url)
         soup = BeautifulSoup(page.text, "html.parser")
 
         rows = soup.find_all("tr", class_="font table-full-alt")
@@ -162,35 +175,37 @@ async def register_supermarket_list_with_url(
                     price = price
                 ))
         
+        insert = SuperList(
+                    username = current_user.username,
+                    order = order_id,
+                    issue_date = issue_date,
+                    products = data
+                )
         db_super.put(
-            data = SuperList(
-                username = current_user.username,
-                order = details.order,
-                date = details.date,
-                products = data
-            ),
-            key = details.order
+            data = jsonable_encoder(insert),
+            key = order_id
         )
     except Exception as err:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
             detail = {
-                "errmsg": "ERROR",
+                "errmsg": "DB error",
                 "errdetail": str(err)
             }
         )
     
-    inserted_data = db_super.get(details.order)
+    inserted_data = db_super.get(order_id)
     if not inserted_data:
         raise HTTPException(
-            status_code = status.HTTP_409_CONFLICT,
+            status_code = status.HTTP_404_NOT_FOUND,
             detail = {
                 "errmsg": "Data not inserted"
             }
         )
     
-    return SuperList(**inserted_data)
+    return inserted_data
 
+### DEPRECATED ###
 ### Register a supermarket list with img ###
 router.post(
     path = "/img",

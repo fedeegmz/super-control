@@ -61,7 +61,7 @@ def authenticate_user(username: str, password: str):
     
     del user.password
 
-    return User(**user)
+    return user
 
 def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None):
     to_encode = data.copy()

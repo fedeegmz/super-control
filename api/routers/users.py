@@ -14,7 +14,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from auth import get_password_hash, get_current_user
 
 # db
-from db.deta_db import db_users
+from db.mongo_client import db_client
 
 # models
 from db.models.user import User, UserDB, UserIn
@@ -47,7 +47,17 @@ async def signup(
     if user_data["birth_date"]:
         user_data["birth_date"] = str(user_data["birth_date"])
     
-    user_in = db_users.get(user_data.get("username"))
+    try:
+        user_in = db_client.users.find_one({"username": user_data.get("username")})
+    except Exception as err:
+        raise HTTPException(
+            status_code = status.HTTP_409_CONFLICT,
+            detail = {
+                "errmsg": "DB error",
+                "errdetail": str(err)
+            }
+        )
+    
     if user_in:
         user_in = jsonable_encoder(User(**user_in))
         raise HTTPException(
@@ -59,10 +69,7 @@ async def signup(
         )
     
     try:
-        new_user = db_users.put(
-            data = jsonable_encoder(UserIn(**user_data)),
-            key = user_data.get("username")
-        )
+        new_user = db_client.users.insert_one(jsonable_encoder(UserIn(**user_data)))
     except Exception as err:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -83,7 +90,7 @@ async def signup(
         tags = ["Users"])
 async def users():
     try:
-        users_db = db_users.fetch({"disabled": False}).items
+        users_db = db_client.users.find({"disabled": False})
     except:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
@@ -91,6 +98,7 @@ async def users():
                 "errmsg": "DB error"
             }
         )
+    
     users_list = users_serializer(users_db)
     
     return users_list
@@ -104,13 +112,14 @@ async def users():
         tags = ["Users"])
 async def user(username: str = Path(...)):
     try:
-        user_db = db_users.get(username)
+        user_db = db_client.users.find_one({"username": username})
         user_db = User(**user_db)
     except Exception as err:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
             detail = {
-                "errmsg": str(err)
+                "errmsg": "DB error",
+                "errdetail": str(err)
             }
         )
     
@@ -139,8 +148,17 @@ async def update_user(
         example = {"name": "Wade"}
     )
 ):
-    user = db_users.get(current_user.username)
-    
+    try:
+        user = db_client.users.find_one({"username": current_user.username})
+    except Exception as err:
+        raise HTTPException(
+            status_code = status.HTTP_409_CONFLICT,
+            detail = {
+                "errmsg": "DB error",
+                "errdetail": str(err)
+            }
+        )
+
     if not user:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
@@ -160,10 +178,11 @@ async def update_user(
         )
     
     try:
-        db_users.update(
-            updates = user_updates,
-            key = current_user.username
+        db_client.users.find_one_and_update(
+            filter = {"username": current_user.username},
+            update = user_updates
         )
+        updated_user = db_client.users.find_one({"username": current_user.username})
     except:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
@@ -172,7 +191,7 @@ async def update_user(
             }
         )
     
-    return User(**db_users.get(current_user.username))
+    return User(**updated_user)
 
 ## delete a user ##
 @router.delete(
@@ -185,7 +204,16 @@ async def update_user(
 async def delete_user(
     current_user: User = Depends(get_current_user),
 ):
-    user = db_users.get(current_user.username)
+    try:
+        user = db_client.users.find_one({"username": current_user.username})
+    except Exception as err:
+        raise HTTPException(
+            status_code = status.HTTP_409_CONFLICT,
+            detail = {
+                "errmsg": "DB error",
+                "errdetail": str(err)
+            }
+        )
     
     if not user:
         raise HTTPException(
@@ -206,10 +234,11 @@ async def delete_user(
         )
     
     try:
-        db_users.update(
-            updates = {"disabled": True},
-            key = user.username
+        db_client.users.find_one_and_update(
+            filter = {"username": user.username},
+            update = {"disabled": True}
         )
+        deleted_user = db_client.users.find_one({"username": current_user.username})
     except:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
@@ -218,4 +247,4 @@ async def delete_user(
             }
         )
     
-    return User(**db_users.get(current_user.username))
+    return User(**deleted_user)

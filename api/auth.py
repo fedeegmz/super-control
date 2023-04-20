@@ -15,7 +15,7 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 
 # db
-from db.deta_db import db_users
+from db.mongo_client import db_client
 
 # models
 from db.models.user import User, UserIn, UserDB
@@ -41,7 +41,7 @@ def get_password_hash(password: str):
 
 def authenticate_user(username: str, password: str):
     try:
-        user = db_users.get(username)
+        user = db_client.users.find_one({"username": username})
     except Exception as err:
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
@@ -97,7 +97,7 @@ async def get_current_user(token = Depends(oauth2_scheme)):
         raise credentials_exception
     
     try:
-        user = db_users.get(token_data.username)
+        user = db_client.users.find_one({"username": token_data.username})
         if not user:
             raise credentials_exception
     except:

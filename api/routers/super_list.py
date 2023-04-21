@@ -80,20 +80,19 @@ async def register_supermarket_list(
     issue_date: str = Query(),
     products: list[Products] = Body(...)
 ):
-    try:
-        insert = SuperList(
+    if get_superlist_with_orderid(order):
+        raise HTTPException(
+            status_code = status.HTTP_409_CONFLICT,
+            detail = {
+                "errmsg": "Order exists"
+            }
+        )
+    
+    insert = SuperList(
             username = current_user.username,
             order = order,
             issue_date = issue_date,
             products = jsonable_encoder(products)
-        )
-    except Exception as err:
-        raise HTTPException(
-            status_code = status.HTTP_409_CONFLICT,
-            detail = {
-                "errmsg": "DB error",
-                "errdetail": str(err)
-            }
         )
     
     inserted_data = insert_superlist(insert.dict())

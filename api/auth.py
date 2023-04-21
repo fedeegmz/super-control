@@ -15,6 +15,9 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 
 # db
+from db.mongo_client import users_mongo_db
+
+# util
 from util import get_user_with_username, exist_user
 
 # models
@@ -43,11 +46,7 @@ def authenticate_user(username: str, password: str):
     if not exist_user(username):
         return False
     
-    user = get_user_with_username(
-        username = username,
-        full_user = True
-    )
-    
+    user = users_mongo_db.find_one({"username": username})
     user = UserDB(**user)
     
     if not verify_password(password, user.password):
@@ -90,11 +89,11 @@ async def get_current_user(token = Depends(oauth2_scheme)):
     except JWTError:
         raise credentials_exception
     
-    if not exist_user(username):
+    if not exist_user(token_data.username):
         raise credentials_exception
     
     user = get_user_with_username(
-        username = username,
+        username = token_data.username,
         full_user = True
     )
     

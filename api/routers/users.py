@@ -47,14 +47,11 @@ async def signup(
     if user_data["birth_date"]:
         user_data["birth_date"] = str(user_data["birth_date"])
     
-    user_in = exist_user(user_data.get("username"))
-    if user_in:
-        user_in = jsonable_encoder(User(**user_in))
+    if exist_user(user_data.get("username")):
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
             detail = {
-                "errmsg": "Username exists",
-                "user_detail": user_in
+                "errmsg": "Username exists"
             }
         )
     

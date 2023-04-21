@@ -156,7 +156,7 @@ async def register_supermarket_list_with_url(
         )
     
     try:
-        page = requests.get(url)
+        page = await requests.get(url)
         soup = BeautifulSoup(page.text, "html.parser")
 
         rows = soup.find_all("tr", class_="font table-full-alt")

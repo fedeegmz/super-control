@@ -21,6 +21,7 @@ atlas_url = f'mongodb+srv://{username}:{password}@main.utvbo6g.mongodb.net/?retr
 #     ).local
 
 ### remote ATLAS ###
-db_client = MongoClient(
-    atlas_url
-    ).test
+db_client = MongoClient(atlas_url).test
+
+users_mongo_db = db_client.users
+superlist_mongo_db = db_client.super_list

@@ -10,13 +10,17 @@ from fastapi.encoders import jsonable_encoder
 from auth import get_password_hash, get_current_user
 
 # db
-from db.deta_db import db_users
+from db.mongo_client import users_mongo_db
+
+# util
+from util import get_available_users, get_user_with_username, exist_user
+from util import insert_user
 
 # models
-from db.models.user import User, UserDB, UserIn
+from db.models.user import User, UserDB
 
 # serializers
-from db.serializers.user import users_serializer
+# from db.serializers.user import users_serializer
 
 
 router = APIRouter(
@@ -43,7 +47,7 @@ async def signup(
     if user_data["birth_date"]:
         user_data["birth_date"] = str(user_data["birth_date"])
     
-    user_in = db_users.get(user_data.get("username"))
+    user_in = exist_user(user_data.get("username"))
     if user_in:
         user_in = jsonable_encoder(User(**user_in))
         raise HTTPException(
@@ -54,19 +58,7 @@ async def signup(
             }
         )
     
-    try:
-        new_user = db_users.put(
-            data = jsonable_encoder(UserIn(**user_data)),
-            key = user_data.get("username")
-        )
-    except Exception as err:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail = {
-                "errmsg": "User not inserted",
-                "errdetail": str(err)
-                }
-        )
+    new_user = insert_user(user_data)
     
     return new_user
 
@@ -78,16 +70,7 @@ async def signup(
         summary = "Show all users",
         tags = ["Users"])
 async def users():
-    try:
-        users_db = db_users.fetch({"disabled": False}).items
-    except:
-        raise HTTPException(
-            status_code = status.HTTP_409_CONFLICT,
-            detail = {
-                "errmsg": "DB error"
-            }
-        )
-    users_list = users_serializer(users_db)
+    users_list = get_available_users()
     
     return users_list
 
@@ -99,16 +82,7 @@ async def users():
         summary = "Show a user",
         tags = ["Users"])
 async def user(username: str = Path(...)):
-    try:
-        user_db = db_users.get(username)
-        user_db = User(**user_db)
-    except Exception as err:
-        raise HTTPException(
-            status_code = status.HTTP_409_CONFLICT,
-            detail = {
-                "errmsg": str(err)
-            }
-        )
+    user_db = get_user_with_username(username)
     
     if not user_db:
         raise HTTPException(
@@ -135,17 +109,10 @@ async def update_user(
         example = {"name": "Wade"}
     )
 ):
-    user = db_users.get(current_user.username)
-    
-    if not user:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = {
-                "errmsg": "User not found"
-            }
-        )
-    
-    user = UserIn(**user)
+    user = get_user_with_username(
+        username = current_user.username,
+        full_user = True
+    )
     
     if user.disabled:
         raise HTTPException(
@@ -156,19 +123,19 @@ async def update_user(
         )
     
     try:
-        db_users.update(
-            updates = user_updates,
-            key = current_user.username
+        users_mongo_db.find_one_and_update(
+            filter = {"username": current_user.username},
+            update = user_updates
         )
     except:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
             detail = {
-                "error": "User not updated"
+                "error": "DB error: user not updated"
             }
         )
     
-    return User(**db_users.get(current_user.username))
+    return get_user_with_username(current_user.username)
 
 ## delete a user ##
 @router.delete(
@@ -181,18 +148,11 @@ async def update_user(
 async def delete_user(
     current_user: User = Depends(get_current_user),
 ):
-    user = db_users.get(current_user.username)
+    user = get_user_with_username(
+        username = current_user.username,
+        full_user = True
+    )
     
-    if not user:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = {
-                "errmsg": "User not found"
-            }
-        )
-
-    user = UserIn(**user)
-
     if user.disabled:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
@@ -202,16 +162,16 @@ async def delete_user(
         )
     
     try:
-        db_users.update(
-            updates = {"disabled": True},
-            key = user.username
+        users_mongo_db.find_one_and_update(
+            filter = {"username": current_user.username},
+            update = {"disabled": True}
         )
     except:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
             detail = {
-                "error": "User not deleted"
+                "error": "DB error: user not deleted"
             }
         )
     
-    return User(**db_users.get(current_user.username))
+    return get_user_with_username(current_user.username)

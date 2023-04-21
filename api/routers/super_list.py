@@ -12,9 +12,9 @@ from bs4 import BeautifulSoup
 # auth
 from auth import get_current_user
 
-# db
-from db.deta_db import db_super
-from db.deta_db import drive_super_lists
+# util
+from util import get_available_superlist_for_user, get_superlist_with_orderid
+from util import insert_superlist
 
 # models
 from db.models.user import User
@@ -38,15 +38,7 @@ router = APIRouter(
 async def supermarket_lists(
     current_user: User = Depends(get_current_user)
 ):
-    try:
-        super_lists = db_super.fetch({"username": current_user.username})
-    except:
-        raise HTTPException(
-            status_code = status.HTTP_400_BAD_REQUEST,
-            detail = {
-                "errmsg": "DB error"
-            }
-        )
+    super_lists = get_available_superlist_for_user(current_user.username)
     
     return super_lists
 
@@ -62,18 +54,7 @@ async def supermarket_list(
     current_user: User = Depends(get_current_user),
     order_id: str = Path(...)
 ):
-    try:
-        super_list = db_super.fetch(
-            {"username": current_user.username},
-            {"order": order_id}
-        )
-    except:
-        raise HTTPException(
-            status_code = status.HTTP_409_CONFLICT,
-            detail = {
-                "errmsg": "DB error"
-            }
-        )
+    super_list = get_superlist_with_orderid(order_id)
     
     if not super_list:
         raise HTTPException(
@@ -106,10 +87,6 @@ async def register_supermarket_list(
             issue_date = issue_date,
             products = jsonable_encoder(products)
         )
-        db_super.put(
-            data = jsonable_encoder(insert),
-            key = order
-        )
     except Exception as err:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
@@ -119,7 +96,7 @@ async def register_supermarket_list(
             }
         )
     
-    inserted_data = db_super.get(order)
+    inserted_data = insert_superlist(insert.dict())
     if not inserted_data:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
@@ -181,20 +158,16 @@ async def register_supermarket_list_with_url(
                     issue_date = issue_date,
                     products = data
                 )
-        db_super.put(
-            data = jsonable_encoder(insert),
-            key = order_id
-        )
     except Exception as err:
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
             detail = {
-                "errmsg": "DB error",
+                "errmsg": "ERROR",
                 "errdetail": str(err)
             }
         )
     
-    inserted_data = db_super.get(order_id)
+    inserted_data = insert_superlist(insert)
     if not inserted_data:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
@@ -207,32 +180,32 @@ async def register_supermarket_list_with_url(
 
 ### DEPRECATED ###
 ### Register a supermarket list with img ###
-router.post(
-    path = "/img",
-    status_code = status.HTTP_202_ACCEPTED,
-    response_model = SuperList,
-    summary = "Register a supermarket list with a img",
-    tags = ["Supermarket list"],
-    deprecated = True
-)
-async def register_supermarket_list_img(
-    current_user: User = Depends(get_current_user),
-    order_id: str = Body(),
-    img: UploadFile = File()
-):
-    try:
-        drive_super_lists.put(
-            name = f'{current_user.username}&&{order_id}',
-            data = img.file,
-            content_type = img.content_type
-        )
-    except Exception as err:
-        raise HTTPException(
-            status_code = status.HTTP_409_CONFLICT,
-            detail = {
-                "errmsg": "Drive error",
-                "errdetail": str(err)
-            }
-        )
+# router.post(
+#     path = "/img",
+#     status_code = status.HTTP_202_ACCEPTED,
+#     response_model = SuperList,
+#     summary = "Register a supermarket list with a img",
+#     tags = ["Supermarket list"],
+#     deprecated = True
+# )
+# async def register_supermarket_list_img(
+#     current_user: User = Depends(get_current_user),
+#     order_id: str = Body(),
+#     img: UploadFile = File()
+# ):
+#     try:
+#         drive_super_lists.put(
+#             name = f'{current_user.username}&&{order_id}',
+#             data = img.file,
+#             content_type = img.content_type
+#         )
+#     except Exception as err:
+#         raise HTTPException(
+#             status_code = status.HTTP_409_CONFLICT,
+#             detail = {
+#                 "errmsg": "Drive error",
+#                 "errdetail": str(err)
+#             }
+#         )
     
-    return f'{current_user.username}&&{order_id}'
+#     return f'{current_user.username}&&{order_id}'

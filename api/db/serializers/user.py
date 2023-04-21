@@ -20,5 +20,5 @@ def users_serializer(users: list) -> list[User]:
 def users_in_serializer(users: list) -> list[UserIn]:
     return [UserIn(**user) for user in users]
 
-def users_db_serializer(users: list) -> list[User]:
+def users_db_serializer(users: list) -> list[UserDB]:
     return [UserDB(**user) for user in users]

@@ -15,10 +15,10 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 
 # db
-from db.deta_db import db_users
+from util import get_user_with_username, exist_user
 
 # models
-from db.models.user import User, UserIn, UserDB
+from db.models.user import UserDB
 from db.models.token import TokenData
 
 
@@ -40,19 +40,13 @@ def get_password_hash(password: str):
     return pwd_context.hash(password)
 
 def authenticate_user(username: str, password: str):
-    try:
-        user = db_users.get(username)
-    except Exception as err:
-        raise HTTPException(
-            status_code = status.HTTP_400_BAD_REQUEST,
-            detail = {
-                "errmsg": "DB error",
-                "errdetail": str(err)
-            }
-        )
-    
-    if not user:
+    if not exist_user(username):
         return False
+    
+    user = get_user_with_username(
+        username = username,
+        full_user = True
+    )
     
     user = UserDB(**user)
     
@@ -96,14 +90,13 @@ async def get_current_user(token = Depends(oauth2_scheme)):
     except JWTError:
         raise credentials_exception
     
-    try:
-        user = db_users.get(token_data.username)
-        if not user:
-            raise credentials_exception
-    except:
+    if not exist_user(username):
         raise credentials_exception
     
-    user = UserIn(**user)
+    user = get_user_with_username(
+        username = username,
+        full_user = True
+    )
     
     if user.disabled:
         raise HTTPException(

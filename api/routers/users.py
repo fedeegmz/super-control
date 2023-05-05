@@ -1,6 +1,5 @@
 # Python
 
-
 # FastAPI
 from fastapi import APIRouter, Path, Body
 from fastapi import HTTPException, status, Depends
@@ -10,11 +9,7 @@ from fastapi.encoders import jsonable_encoder
 from auth import get_password_hash, get_current_user
 
 # db
-from db.mongo_client import users_mongo_db
-
-# util
-from util import get_available_users, get_user_with_username, exist_user
-from util import insert_user
+from db.mongo_client import db_client
 
 # models
 from db.models.user import User, UserDB
@@ -47,7 +42,7 @@ async def signup(
     if user_data["birth_date"]:
         user_data["birth_date"] = str(user_data["birth_date"])
     
-    if exist_user(user_data.get("username")):
+    if db_client.exist_user(user_data.get("username")):
         raise HTTPException(
             status_code = status.HTTP_409_CONFLICT,
             detail = {
@@ -55,7 +50,7 @@ async def signup(
             }
         )
     
-    new_user = insert_user(user_data)
+    new_user = db_client.insert_user(user_data)
     
     return new_user
 
@@ -67,7 +62,7 @@ async def signup(
         summary = "Show all users",
         tags = ["Users"])
 async def users():
-    users_list = get_available_users()
+    users_list = db_client.get_available_users()
     
     return users_list
 
@@ -79,7 +74,7 @@ async def users():
         summary = "Show a user",
         tags = ["Users"])
 async def user(username: str = Path(...)):
-    user_db = get_user_with_username(username)
+    user_db = db_client.get_user_with_username(username)
     
     if not user_db:
         raise HTTPException(
@@ -103,10 +98,10 @@ async def update_user(
     current_user: User = Depends(get_current_user),
     user_updates: dict = Body(
         ...,
-        example = {"name": "Wade"}
+        example = {"name": "Tony"}
     )
 ):
-    user = get_user_with_username(
+    user = db_client.get_user_with_username(
         username = current_user.username,
         full_user = True
     )
@@ -119,20 +114,12 @@ async def update_user(
             }
         )
     
-    try:
-        users_mongo_db.find_one_and_update(
-            filter = {"username": current_user.username},
-            update = user_updates
-        )
-    except:
-        raise HTTPException(
-            status_code = status.HTTP_409_CONFLICT,
-            detail = {
-                "error": "DB error: user not updated"
-            }
-        )
+    user_updated = db_client.get_user_with_username_and_update(
+        username = current_user.username,
+        updates = user_updates
+    )
     
-    return get_user_with_username(current_user.username)
+    return user_updated
 
 ## delete a user ##
 @router.delete(
@@ -145,7 +132,7 @@ async def update_user(
 async def delete_user(
     current_user: User = Depends(get_current_user),
 ):
-    user = get_user_with_username(
+    user = db_client.get_user_with_username(
         username = current_user.username,
         full_user = True
     )
@@ -158,17 +145,9 @@ async def delete_user(
             }
         )
     
-    try:
-        users_mongo_db.find_one_and_update(
-            filter = {"username": current_user.username},
-            update = {"disabled": True}
-        )
-    except:
-        raise HTTPException(
-            status_code = status.HTTP_409_CONFLICT,
-            detail = {
-                "error": "DB error: user not deleted"
-            }
-        )
-    
-    return get_user_with_username(current_user.username)
+    user_deleted = db_client.get_user_with_username_and_update(
+        username = current_user.username,
+        updates = {"disabled": True}
+    )
+
+    return user_deleted

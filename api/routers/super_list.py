@@ -9,12 +9,11 @@ import requests
 # Beautifulsoap4
 from bs4 import BeautifulSoup
 
+# db
+from db.mongo_client import db_client
+
 # auth
 from auth import get_current_user
-
-# util
-from util import get_available_superlist_for_user, get_superlist_with_orderid
-from util import insert_superlist
 
 # models
 from db.models.user import User
@@ -38,7 +37,7 @@ router = APIRouter(
 async def supermarket_lists(
     current_user: User = Depends(get_current_user)
 ):
-    super_lists = get_available_superlist_for_user(current_user.username)
+    super_lists = db_client.get_available_superlist_for_user(current_user.username)
     
     return super_lists
 
@@ -54,7 +53,7 @@ async def supermarket_list(
     current_user: User = Depends(get_current_user),
     order_id: str = Path(...)
 ):
-    super_list = get_superlist_with_orderid(order_id)
+    super_list = db_client.get_superlist_with_orderid(order_id)
     
     if not super_list:
         raise HTTPException(
@@ -80,14 +79,6 @@ async def register_supermarket_list(
     issue_date: str = Query(),
     products: list[Products] = Body(...)
 ):
-    if get_superlist_with_orderid(order):
-        raise HTTPException(
-            status_code = status.HTTP_409_CONFLICT,
-            detail = {
-                "errmsg": "Order exists"
-            }
-        )
-    
     insert = SuperList(
             username = current_user.username,
             order = order,
@@ -95,7 +86,7 @@ async def register_supermarket_list(
             products = jsonable_encoder(products)
         )
     
-    inserted_data = insert_superlist(insert.dict())
+    inserted_data = db_client.insert_superlist(insert.dict())
     if not inserted_data:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
@@ -166,7 +157,7 @@ async def register_supermarket_list_with_url(
             }
         )
     
-    inserted_data = insert_superlist(insert)
+    inserted_data = db_client.insert_superlist(insert)
     if not inserted_data:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,

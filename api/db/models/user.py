@@ -35,12 +35,12 @@ class UserDB(User):
     class Config:
         schema_extra = {
             "example": {
-                "username": "testuser",
-                "name": "John",
-                "lastname": "Doe",
-                "email": "johndoe@test.com",
+                "username": "ironman",
+                "name": "Anthony",
+                "lastname": "Stark",
+                "email": "tony@starkindustries.com",
                 "birth_date": str(date(2000, 12, 25)),
-                "password": "testpassword"
+                "password": "ILoveMark40"
             }
         }
 

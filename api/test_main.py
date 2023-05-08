@@ -10,7 +10,7 @@ client = TestClient(app)
 
 def test_verify_statuscode_from_root():
     """
-        Verifica que la Path Operation root retorne un codigo de estado 200
+    Verifica que la Path Operation root retorne un codigo de estado 200
     """
     response = client.get("/")
 
@@ -21,7 +21,7 @@ def test_verify_statuscode_from_root():
 
 def test_correct_user_to_register():
     """
-        Verifica que el usuario que se va a registrar sea correcto
+    Verifica que el usuario que se va a registrar sea correcto
     """
     fake_user = {
         "username": "ironman",
@@ -42,8 +42,8 @@ def test_correct_user_to_register():
 
 def test_incorrect_user_not_registered():
     """
-        Verifica que no se registre un usuario incorrecto.
-        fake_user no tiene password.
+    Verifica que no se registre un usuario incorrecto.
+    fake_user no tiene password.
     """
     fake_user = {
         "username": "ironman",

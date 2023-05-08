@@ -1,5 +1,5 @@
 # FastAPI
-from fastapi import APIRouter, Path, Body, Query, File, UploadFile, Depends
+from fastapi import APIRouter, Path, Body, Query, Depends
 from fastapi import HTTPException, status
 from fastapi.encoders import jsonable_encoder
 
@@ -38,8 +38,11 @@ async def supermarket_lists(
     current_user: User = Depends(get_current_user)
 ):
     super_lists = db_client.get_available_superlist_for_user(current_user.username)
+
+    if len(super_lists) != 0:
+        super_lists_to_return = [SuperList(**super_list).dict() for super_list in super_lists]
     
-    return super_lists
+    return super_lists_to_return
 
 ### Show a supermarket list ###
 @router.get(
@@ -63,7 +66,7 @@ async def supermarket_list(
             }
         )
     
-    return super_list
+    return super_list.dict()
 
 ### Register a supermarket list ###
 @router.post(
@@ -95,7 +98,7 @@ async def register_supermarket_list(
             }
         )
     
-    return inserted_data
+    return inserted_data.dict()
 
 ### Register a supermarket list with a url ###
 @router.post(
@@ -166,36 +169,63 @@ async def register_supermarket_list_with_url(
             }
         )
     
-    return inserted_data
+    return inserted_data.dict()
 
-### DEPRECATED ###
-### Register a supermarket list with img ###
-# router.post(
-#     path = "/img",
-#     status_code = status.HTTP_202_ACCEPTED,
-#     response_model = SuperList,
-#     summary = "Register a supermarket list with a img",
-#     tags = ["Supermarket list"],
-#     deprecated = True
-# )
-# async def register_supermarket_list_img(
-#     current_user: User = Depends(get_current_user),
-#     order_id: str = Body(),
-#     img: UploadFile = File()
-# ):
-#     try:
-#         drive_super_lists.put(
-#             name = f'{current_user.username}&&{order_id}',
-#             data = img.file,
-#             content_type = img.content_type
-#         )
-#     except Exception as err:
-#         raise HTTPException(
-#             status_code = status.HTTP_409_CONFLICT,
-#             detail = {
-#                 "errmsg": "Drive error",
-#                 "errdetail": str(err)
-#             }
-#         )
+### Update a supermarket list ###
+@router.post(
+    path = "/{order_id}",
+    status_code = status.HTTP_200_OK,
+    response_model = SuperList,
+    summary = "Update a supermarket list with the orderID",
+    tags = ["Supermarket list"]
+)
+async def update_supermarket_list(
+    order_id: str = Path(...),
+    updates: dict = Body(
+        ...,
+        example = {
+            "order": "12345",
+            "issue_date": "2023-12-30"
+        }
+    )
+):
+    super_list_updated = db_client.get_superlist_with_orderid_and_update(
+        order_id = order_id,
+        updates = updates
+    )
+
+    if not super_list_updated:
+        raise HTTPException(
+            status_code = status.HTTP_409_CONFLICT,
+            detail = {
+                "errmsg": "Supermarket list not updated"
+            }
+        )
     
-#     return f'{current_user.username}&&{order_id}'
+    return super_list_updated.dict()
+
+### Delete a supermarket list ###
+@router.delete(
+    path = "/{order_id}",
+    status_code = status.HTTP_200_OK,
+    response_model = SuperList,
+    summary = "Delete a supermarket list with the orderID",
+    tags = ["Supermarket list"]
+)
+async def delete_supermarket_list(
+    order_id: str = Path(...)
+):
+    super_list_deleted = db_client.get_superlist_with_orderid_and_update(
+        order_id = order_id,
+        updates = {"disabled": True}
+    )
+
+    if not super_list_deleted:
+        raise HTTPException(
+            status_code = status.HTTP_409_CONFLICT,
+            detail = {
+                "errmsg": "Supermarket list not deleted"
+            }
+        )
+    
+    return super_list_deleted.dict()

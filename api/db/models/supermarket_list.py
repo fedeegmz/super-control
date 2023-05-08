@@ -18,6 +18,10 @@ class BaseSuperList(BaseModel):
         ...
     )
     url: Optional[str] = Field(default=None)
+    disabled: bool = Field(
+        ...,
+        default = False
+    )
 
 class SuperList(BaseSuperList):
     username: str = Field(

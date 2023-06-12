@@ -26,12 +26,16 @@ class User(BaseModel):
     birth_date: Optional[date] = Field(default=None)
 
 class UserDB(User):
+    disabled: bool = Field(default=False)
+    created: datetime = Field(default=datetime.now())
+    
+class UserIn(UserDB):
     password: str = Field(
         ...,
         min_length = 8,
         max_length = 64
         )
-    
+
     class Config:
         schema_extra = {
             "example": {
@@ -43,7 +47,3 @@ class UserDB(User):
                 "password": "ILoveMark40"
             }
         }
-
-class UserIn(UserDB):
-    disabled: bool = False
-    created: datetime = datetime.now()

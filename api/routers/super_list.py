@@ -1,6 +1,9 @@
+# Python
+from datetime import date, timedelta
+
 # FastAPI
 from fastapi import APIRouter, Path, Body, Query, Depends
-from fastapi import HTTPException, status
+from fastapi import status
 from fastapi.encoders import jsonable_encoder
 
 # Requests
@@ -8,6 +11,9 @@ import requests
 
 # Beautifulsoap4
 from bs4 import BeautifulSoup
+
+# exceptions
+from exceptions import HTTPError
 
 # db
 from db.mongo_client import db_client
@@ -41,6 +47,8 @@ async def supermarket_lists(
 
     if len(super_lists) != 0:
         super_lists_to_return = [SuperList(**super_list).dict() for super_list in super_lists]
+    else:
+        super_lists_to_return = []
     
     return super_lists_to_return
 
@@ -56,15 +64,13 @@ async def supermarket_list(
     current_user: User = Depends(get_current_user),
     order_id: str = Path(...)
 ):
-    super_list = db_client.get_superlist_with_orderid(order_id)
+    super_list = db_client.get_superlist_with_orderid(
+        username = current_user.username,
+        order_id = order_id
+    )
     
     if not super_list:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = {
-                "errmsg": "Order not found"
-            }
-        )
+        raise HTTPError().not_found(message="Order not found")
     
     return super_list.dict()
 
@@ -86,17 +92,14 @@ async def register_supermarket_list(
             username = current_user.username,
             order = order,
             issue_date = issue_date,
-            products = jsonable_encoder(products)
+            products = jsonable_encoder(
+                [product.description.strip().lower() for product in products]
+            )
         )
     
     inserted_data = db_client.insert_superlist(insert.dict())
     if not inserted_data:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = {
-                "errmsg": "List not inserted"
-            }
-        )
+        raise HTTPError().not_found(message="List not inserted")
     
     return inserted_data.dict()
 
@@ -116,17 +119,13 @@ async def register_supermarket_list_with_url(
     url = details_dict.get("url")
     order_id = details_dict.get("order")
     issue_date = details_dict.get("issue_date")
+    supermarket = details_dict.get("supermarket")
 
     if not url or not order_id or not issue_date:
-        raise HTTPException(
-            status_code = status.HTTP_400_BAD_REQUEST,
-            detail = {
-                "errmsg": "url/order/issue_date not recived"
-            }
-        )
+        raise HTTPError().bad_request(message="url/order/issue_date not recived")
     
     try:
-        page = await requests.get(url)
+        page = requests.get(url)
         soup = BeautifulSoup(page.text, "html.parser")
 
         rows = soup.find_all("tr", class_="font table-full-alt")
@@ -140,34 +139,24 @@ async def register_supermarket_list_with_url(
             
             data.append(
                 Products(
-                    description = description,
-                    units = units,
-                    price = price
+                    description = str(description).strip().lower(),
+                    units = float(units),
+                    price = float(price)
                 ))
         
         insert = SuperList(
                     username = current_user.username,
                     order = order_id,
                     issue_date = issue_date,
+                    supermarket = supermarket,
                     products = data
                 )
     except Exception as err:
-        raise HTTPException(
-            status_code = status.HTTP_409_CONFLICT,
-            detail = {
-                "errmsg": "ERROR",
-                "errdetail": str(err)
-            }
-        )
+        raise HTTPError().conflict(message="ERROR", err=str(err))
     
     inserted_data = db_client.insert_superlist(insert)
     if not inserted_data:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = {
-                "errmsg": "Data not inserted"
-            }
-        )
+        raise HTTPError().not_found(message="Data not inserted")
     
     return inserted_data.dict()
 
@@ -180,27 +169,28 @@ async def register_supermarket_list_with_url(
     tags = ["Supermarket list"]
 )
 async def update_supermarket_list(
+    current_user: User = Depends(get_current_user),
     order_id: str = Path(...),
-    updates: dict = Body(
+    updates: list[dict] = Body(
         ...,
-        example = {
-            "order": "12345",
-            "issue_date": "2023-12-30"
-        }
+        example = [
+            {"order": "12345"},
+            {"issue_date": "2023-12-30"}
+        ]
     )
 ):
+    # strip() and lower() to product.description
+    if updates.get("description", None):
+        updates["description"] = updates["description"].strip().lower()
+    
     super_list_updated = db_client.get_superlist_with_orderid_and_update(
+        username = current_user.username,
         order_id = order_id,
         updates = updates
     )
 
     if not super_list_updated:
-        raise HTTPException(
-            status_code = status.HTTP_409_CONFLICT,
-            detail = {
-                "errmsg": "Supermarket list not updated"
-            }
-        )
+        raise HTTPError().conflict(message="Supermarket list not updated")
     
     return super_list_updated.dict()
 
@@ -213,19 +203,66 @@ async def update_supermarket_list(
     tags = ["Supermarket list"]
 )
 async def delete_supermarket_list(
+    current_user: User = Depends(get_current_user),
     order_id: str = Path(...)
 ):
     super_list_deleted = db_client.get_superlist_with_orderid_and_update(
+        username = current_user.username,
         order_id = order_id,
-        updates = {"disabled": True}
+        updates = [{"disabled": True}]
     )
 
     if not super_list_deleted:
-        raise HTTPException(
-            status_code = status.HTTP_409_CONFLICT,
-            detail = {
-                "errmsg": "Supermarket list not deleted"
-            }
-        )
+        raise HTTPError().conflict(message="Supermarket list not deleted")
     
     return super_list_deleted.dict()
+
+## Interesting Cards ##
+
+### amount per period ###
+@router.get(
+    path = "/amount-per-period/{product_description}",
+    status_code = status.HTTP_200_OK,
+    response_model = int,
+    summary = "Get the quantity of a product in a period",
+    tags = ["Supermarket list", "Icard"]
+)
+async def amount_per_period(
+    current_user: User = Depends(get_current_user),
+    product_description: str = Path(...),
+    start: date = Query(default=date.today() - timedelta(days=30)),
+    end: date = Query(default=date.today())
+):
+    product_description = product_description.strip().lower()
+    result = db_client.superlist_mongo_db.find(
+        {
+            "username": current_user.username,
+            "products.description": product_description,
+            "issue_date": {"$lte": str(end)},
+            "issue_date": {"$gte": str(start)}
+        },
+        {
+            "_id": 0,
+            "description": "$products.description",
+            "price": 1
+        }
+    )
+
+    return len(result)
+    # results = db_client.superlist_mongo_db.aggregate([
+    #     {"$match": 
+    #         {
+    #             "username": current_user.username,
+    #             "products.description": product_description,
+    #             "issue_date": {"$gte": start},
+    #             "issue_date": {"$lte": end}
+    #         }
+    #     },
+    #     {
+    #         "$group":
+    #             {
+    #                 "_id": "$products.description",
+    #                 "total": {"$sum": "$products.price"}
+    #             }
+    #     }
+    # ])

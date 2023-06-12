@@ -1,6 +1,5 @@
 # Python
 
-
 # FastAPI
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordRequestForm
@@ -58,4 +57,5 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         tags = ["Token"]
         )
 async def read_users_me(current_user: User = Depends(get_current_user)):
+    print("En read_users_me")
     return current_user

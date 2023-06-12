@@ -13,7 +13,7 @@ from fastapi.encoders import jsonable_encoder
 from pymongo import MongoClient
 
 # models
-from .models.user import User, UserIn
+from .models.user import User, UserDB, UserIn
 from .models.supermarket_list import SuperList
 
 # serializers
@@ -54,7 +54,7 @@ class MongoDB:
         self.users_mongo_db = self.__db_client.users
         self.superlist_mongo_db = self.__db_client.super_list
     
-
+    # USERS #
     def get_available_users(self) -> list:
         """
         Returns all available users from the 'users' collection.
@@ -63,9 +63,23 @@ class MongoDB:
             list: A list containing all available users.
         """
         try:
-            users = self.users_mongo_db.find(
-                {"disabled": False}
-            )
+            users = self.users_mongo_db.aggregate([
+                {
+                    "$match": {"disabled": False}
+                },
+                {
+                    "$limit": 1000
+                },
+                {
+                    "$project": {
+                        "_id": 0,
+                        "created": 0,
+                        "disabled": 0,
+                        "password": 0
+                    }
+                }
+            ])
+
         except Exception as err:
             raise HTTPException(
                 status_code = status.HTTP_409_CONFLICT,
@@ -81,7 +95,7 @@ class MongoDB:
         self,
         username: str,
         full_user: bool = False
-    ) -> Union[User, UserIn]:
+    ) -> Union[User, UserDB]:
         """
         Returns a user with the specified username from the 'users' collection.
 
@@ -94,11 +108,18 @@ class MongoDB:
             User or UserIn: A User or UserIn instance representing the retrieved user.
         """
         try:
-            user = self.users_mongo_db.find_one({"username": username})
+            projection = {
+                "_id": 0,
+                "password": 0
+            }
+            if not full_user:
+                projection["disabled"] = 0
+                projection["created"] = 0
+            
+            user = self.users_mongo_db.find_one({"username": username}, projection)
             
             if full_user:
-                user = UserIn(**user)
-                del user.password
+                user = UserDB(**user)
             else:
                 user = User(**user)
         
@@ -116,7 +137,7 @@ class MongoDB:
     def get_user_with_username_and_update(
         self,
         username: str,
-        updates: dict
+        updates: list[dict]
     ) -> User:
         """
         Updates a user with the specified username from the 'users' collection and
@@ -131,9 +152,11 @@ class MongoDB:
             User: A User instance representing the updated user.
         """
         try:
+            updates_dict = {{"$set": update} for update in updates}
+
             self.users_mongo_db.find_one_and_update(
                 filter = {"username": username},
-                update = updates
+                update = updates_dict
             )
             user_updated = self.get_user_with_username(username)
         except Exception as err:
@@ -198,7 +221,13 @@ class MongoDB:
         
         try:
             user = self.users_mongo_db.find_one(
-                {"_id": ObjectId(inserted_id)}
+                {"_id": ObjectId(inserted_id)},
+                {
+                    "_id": 0,
+                    "password": 0,
+                    "created": 0,
+                    "disabled": 0
+                }
             )
             user = User(**user)
         except Exception as err:
@@ -212,7 +241,7 @@ class MongoDB:
         
         return user
     
-
+    # SUPER LISTS #
     def get_available_superlist_for_user(
         self,
         username: str
@@ -227,10 +256,22 @@ class MongoDB:
             list: A list containing all available super lists for the specified user.
         """
         try:
-            super_list = self.superlist_mongo_db.find(
-                {"username": username},
-                {"disabled": False}
-            )
+            super_list = self.superlist_mongo_db.aggregate([
+                {
+                    "$match": {
+                        "username": username,
+                        "disabled": False
+                    }
+                },
+                {
+                    "$limit": 1000
+                },
+                {
+                    "$project": {
+                        "_id": 0
+                    }
+                }
+            ])
         except Exception as err:
             raise HTTPException(
                 status_code = status.HTTP_409_CONFLICT,
@@ -244,6 +285,7 @@ class MongoDB:
 
     def get_superlist_with_orderid(
         self,
+        username: str,
         order_id: str
     ) -> SuperList:
         """
@@ -256,8 +298,14 @@ class MongoDB:
             dict: A dictionary representing the retrieved super list.
         """
         try:
-            super_list = self.superlist_mongo_db.find_one({"order": order_id})
+            super_list = self.superlist_mongo_db.find_one(
+                {
+                    "username": username,
+                    "order": order_id
+                }
+            )
             super_list = SuperList(**super_list)
+
         except Exception as err:
             raise HTTPException(
                 status_code = status.HTTP_409_CONFLICT,
@@ -279,8 +327,9 @@ class MongoDB:
     
     def get_superlist_with_orderid_and_update(
         self,
+        username: str,
         order_id: str,
-        updates: dict
+        updates: list[dict]
     ) -> SuperList:
         """
         Updates the supermarket list with the specified order ID with the given updates.
@@ -295,7 +344,7 @@ class MongoDB:
         Raises:
             HTTPException: If the supermarket list with the specified order ID does not exist, or if there is an error updating the supermarket list in the database.
         """
-        if not self.exist_superlist(order_id):
+        if not self.exist_superlist(username=username, order_id=order_id):
             raise HTTPException(
                 status_code = status.HTTP_400_BAD_REQUEST,
                 detail = {
@@ -304,12 +353,13 @@ class MongoDB:
             )
         
         try:
+            updates_dict = {{"$set": update} for update in updates}
             self.superlist_mongo_db.find_one_and_update(
-                filter = {"order": order_id},
-                update = updates
+                filter = {"username": username, "order": order_id},
+                update = updates_dict
             )
             super_list_updated = self.get_superlist_with_orderid(order_id)
-            super_list_updated = SuperList(**super_list_updated)
+
         except Exception as err:
             raise HTTPException(
                 status_code = status.HTTP_409_CONFLICT,
@@ -323,6 +373,7 @@ class MongoDB:
 
     def exist_superlist(
         self,
+        username: str,
         order_id: str
     ) -> bool:
         """
@@ -337,8 +388,11 @@ class MongoDB:
         """
         try:
             exist = self.superlist_mongo_db.find_one(
-                {"order": order_id},
-                {"disabled": False}
+                {
+                    "username": username,
+                    "order": order_id,
+                    "disabled": False
+                }
             )
         except:
             return False

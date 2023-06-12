@@ -18,7 +18,7 @@ from jose import jwt, JWTError
 from db.mongo_client import db_client
 
 # models
-from db.models.user import UserDB
+from db.models.user import UserIn
 from db.models.token import TokenData
 
 
@@ -44,7 +44,7 @@ def authenticate_user(username: str, password: str):
         return False
     
     user = db_client.users_mongo_db.find_one({"username": username})
-    user = UserDB(**user)
+    user = UserIn(**user)
     
     if not verify_password(password, user.password):
         return False
@@ -67,6 +67,7 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
 
 
 async def get_current_user(token = Depends(oauth2_scheme)):
+    print("En get_current_user")
     credentials_exception = HTTPException(
         status_code = status.HTTP_400_BAD_REQUEST,
         headers = {"WWW-Authenticate": "Bearer"},
@@ -78,21 +79,25 @@ async def get_current_user(token = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, JWT_SECRETKEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
-        
+        print(username)
         if username is None:
             raise credentials_exception
         
         token_data = TokenData(username=username)
+    
     except JWTError:
         raise credentials_exception
     
-    if not db_client.exist_user(token_data.username):
-        raise credentials_exception
+    # if not db_client.exist_user(token_data.username):
+    #     raise credentials_exception
     
     user = db_client.get_user_with_username(
         username = token_data.username,
         full_user = True
     )
+
+    if not user:
+        raise credentials_exception
     
     if user.disabled:
         raise HTTPException(
@@ -100,6 +105,6 @@ async def get_current_user(token = Depends(oauth2_scheme)):
             detail = {
                 "errmsg": "Inactive user"
             }
-            )
+        )
     
     return user

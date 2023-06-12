@@ -17,11 +17,8 @@ class BaseSuperList(BaseModel):
     issue_date: date = Field(
         ...
     )
+    supermarket: Optional[str] = Field(default=None)
     url: Optional[str] = Field(default=None)
-    disabled: bool = Field(
-        ...,
-        default = False
-    )
 
 class SuperList(BaseSuperList):
     username: str = Field(
@@ -30,12 +27,16 @@ class SuperList(BaseSuperList):
         max_length = 15
     )
     products: list[Products] = Field()
+    disabled: bool = Field(
+        default = False
+    )
 
     class Config:
         schema_extra = {
             "example": {
                 "order": "0001",
                 "issue_date": "2023-12-30",
+                "supermarket": "Carrefour",
                 "url": "www.eticket.com",
                 "username": "testuser",
                 "products": [
